@@ -43,9 +43,6 @@ end
 
 Token = Struct.new(:type, :value)
 
-tokens = Tokenizer.new(File.read("test.src")).tokenize
-puts tokens.map(&:inspect).join("\n")
-
 class Parser
   def initialize(tokens)
     @tokens = tokens
@@ -141,10 +138,40 @@ class Parser
   end
 end
 
+class Generator
+
+  def generate(node)
+    case node
+    when DefNode
+      "function %s(%s) { return %s };" % [
+        node.name,
+        node.arg_names.join(","),
+        generate(node.body),
+      ]
+    when CallNode
+      "%s(%s)" % [
+        node.name,
+        node.arg_exprs.map { |expr| generate(expr) }.join(","),
+      ]
+    when VarRefNode
+      node.value
+    when IntegerNode
+      node.value
+    else
+      raise RuntimeError.new(
+        "Unexpected node type #{node.class}"
+      )
+    end
+  end
+end
+
 DefNode = Struct.new(:name, :arg_names, :body)
 IntegerNode = Struct.new(:value)
 CallNode = Struct.new(:name, :arg_exprs)
 VarRefNode = Struct.new(:value)
 
+
+tokens = Tokenizer.new(File.read("test.src")).tokenize
 tree = Parser.new(tokens).parse
-p tree
+generated = Generator.new.generate(tree)
+puts generated
